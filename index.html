@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <!-- Give the page a title -->
+  <title>Peter's Map</title>
+  <!-- Add a link to the Leaflet CSS library so you can reference it for styling your map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+  <!--for icon support-->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.14.0/css/all.css">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.14.0/css/v4-shims.css">
+  <!-- for icon markers -->
+  <link rel="stylesheet" href="css/leaflet.extra-markers.min.css">
+  <!-- Embed Playfair font from Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display&display=swap" rel="stylesheet">
+  <!-- All the CSS code goes inside the style tags below -->
+  <style>
+    /* style the body */
+    body {
+      margin: 0px;
+      height: 100%;
+      width: 100%;
+    }
+
+    /* style the map */
+    #map {
+      position: absolute;
+      width: 100%;
+      top: 0px;
+      bottom: 0;
+    }
+
+    header {
+      position: fixed;
+      left: 12px;
+      top: 12px;
+      width: 200px;
+      height: 60px;
+      background-color: rgba(255, 255, 255, 0.8);
+      box-shadow: 0px 0px 0px 2px rgba(0, 0, 0, 0.3);
+      border-radius: 3px;
+      z-index: 800;
+    }
+
+    /* Set and style fonts for text in map */
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      display: inline-block;
+      color: black;
+      margin-top: 0.10em;
+      margin-bottom: 0.0em;
+      margin-left: 0.5em;
+      margin-right: 0;
+      font-weight: normal;
+    }
+
+    h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 12px;
+      display: inline-block;
+      color: black;
+      margin-top: 0.0em;
+      margin-bottom: 0.0em;
+      margin-left: 0.0em;
+      margin-right: 0;
+      font-weight: normal;
+    }
+
+    h3 {
+      font-family: 'Playfair Display', serif;
+      font-size: 11px;
+      display: inline-block;
+      color: black;
+      margin-top: 0.0em;
+      margin-bottom: 0.0em;
+      margin-left: 1.0em;
+      margin-right: 0;
+      font-weight: normal;
+    }
+
+    a {
+      color: #f7f4ea;
+    }
+
+    /* the zoom control */
+    .leaflet-top {
+      bottom: 0;
+    }
+
+    .leaflet-top .leaflet-control-zoom {
+      top: 72px;
+    }
+
+    .leaflet-control-zoom a {
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Header content -->
+  <header>
+    <h1>Peter's Map</h1><br>
+    <h3>By Peter Miller</h3>
+  </header>
+  <!-- The map -->
+  <div id="map"></div>
+
+  <!-- Add a link to the Leaflet JavaScript library so you can reference it for building your map -->
+  <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+  <!-- Load leaflet.curve.js -->
+  <script src="js/leaflet.curve.js"></script>
+  <!-- Load Esri Leaflet from CDN -->
+  <script src="https://unpkg.com/esri-leaflet/dist/esri-leaflet.js"></script>
+  <!-- Add a link to the jQuery JavaScript library so you can leverage ajax methods to load your data -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <!-- papaparse for bringing in spreadsheet data -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js "></script>
+  <!-- for icon markers -->
+  <script src="js/leaflet.extra-markers.min.js"></script>
+  <!-- All JavaScript goes inside the script tags below -->
+  <script>
+    const map = L.map('map', {
+      minZoom: 0,
+      maxZoom: 11
+    }).setView([44, 18], 5);
+
+    // create a label pane and set its z index to keep labels and boundaries beneath the curved lines
+    map.createPane('labels');
+    map.getPane('labels').style.zIndex = 399;
+
+    const vintageRelief = L.esri.tiledMapLayer({
+      url: 'https://tiles.arcgis.com/tiles/nGt4QxSblgDfeJn9/arcgis/rest/services/VintageShadedRelief/MapServer',
+      minZoom: 0,
+      maxZoom: 9
+      //maxZoom: 18
+    }).addTo(map);
+
+    const vintageReliefLabels = L.esri.basemapLayer('OceansLabels', {
+      minZoom: 0,
+      maxZoom: 11,
+      pane: 'labels'
+    }).addTo(map);
+
+    const Stamen_Terrain = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain-background/{z}/{x}/{y}{r}.{ext}', {
+      attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      subdomains: 'abcd',
+      minZoom: 10,
+      maxZoom: 11,
+      ext: 'png'
+    }).addTo(map);
+
+    // use papaparse to parse the google doc
+    Papa.parse('data/manuscript_transmission.csv', {
+      // make sure it knows the first row is the header
+      header: true,
+      // make papa parse "download" the csv
+      download: true,
+      // upon completion...
+      complete: function(results) {
+
+        // define data
+        let data = results.data;
+
+        // for each point...
+        data.forEach(function(each) {
+
+          var latlngs = [];
+
+          var latlng1 = [parseFloat(each.OriginLat),parseFloat(each.OriginLong)],
+            latlng2 = [parseFloat(each.DestinationLat),parseFloat(each.DestinationLong)];
+
+          var offsetX = latlng2[1] - latlng1[1],
+            offsetY = latlng2[0] - latlng1[0];
+
+          var r = Math.sqrt(Math.pow(offsetX, 2) + Math.pow(offsetY, 2)),
+            theta = Math.atan2(offsetY, offsetX);
+
+          var thetaOffset = (3.14 / 10);
+
+          var r2 = (r / 2) / (Math.cos(thetaOffset)),
+            theta2 = theta + thetaOffset;
+
+          var midpointX = (r2 * Math.cos(theta2)) + latlng1[1],
+            midpointY = (r2 * Math.sin(theta2)) + latlng1[0];
+
+          var midpointLatLng = [midpointY, midpointX];
+
+          latlngs.push(latlng1, midpointLatLng, latlng2);
+
+          var pathOptions = {
+            color: 'rgb(181,101,29,1.0)',
+            weight: 2
+          }
+
+          if (typeof document.getElementById('map').animate === "function") {
+          	var durationBase = 5000;
+             	var duration = Math.sqrt(Math.log(r)) * durationBase;
+          	// Scales the animation duration so that it's related to the line length
+          	// (but such that the longest and shortest lines' durations are not too different).
+             	// You may want to use a different scaling factor.
+            	pathOptions.animate = {
+          		duration: duration,
+          		iterations: Infinity,
+          		easing: 'ease-in-out',
+          		direction: 'normal'
+          	}
+          }
+
+          var curvedPath = L.curve(
+            [
+              'M', latlng1,
+              'Q', midpointLatLng,
+                 latlng2
+            ], pathOptions).addTo(map);
+
+          curvedPath.bindPopup('From: ' + each.OriginPlace + '<br>To: ' + each.TargetPlace);
+
+          // initiate a leaflet marker layer, feed it the data, and add to the map
+          const originPts = L.marker([each.OriginLat, each.OriginLong], {
+            // add an extra marker with a font awesome book icon
+            icon: L.ExtraMarkers.icon({
+              icon: 'fa-book',
+              markerColor: 'blue-dark',
+              shape: 'star',
+              prefix: 'fas'
+            })
+          }).addTo(map);
+
+          originPts.bindPopup(
+            '<h2>Shelfmark: ' + each.Shelfmark + '<br>' +
+            'Wright Number: ' + each.WrightNumber + '<br>' +
+            'Period: ' + each.YearLow + "CE - " + each.YearHigh + "CE" + '<br>' +
+            'Place: ' + each.OriginPlace + '</h2>'
+          );
+
+          // initiate a leaflet marker layer, feed it the data, and add to the map
+          const destinationPts = L.marker([each.DestinationLat, each.DestinationLong], {
+            // add an extra marker with a font awesome book icon
+            icon: L.ExtraMarkers.icon({
+              icon: 'fa-book',
+              markerColor: 'blue-dark',
+              shape: 'star',
+              prefix: 'fas'
+            })
+          }).addTo(map);
+
+          destinationPts.bindPopup(
+            '<h2>Shelfmark: ' + each.Shelfmark + '<br>' +
+            'Wright Number: ' + each.WrightNumber + '<br>' +
+            'Period: ' + each.YearLow + "CE - " + each.YearHigh + "CE" + '<br>' +
+            'Place: ' + each.TargetPlace + '</h2>'
+          );
+
+        });
+
+      }
+    });
+
+  </script>
+</body>
+
+</html>
