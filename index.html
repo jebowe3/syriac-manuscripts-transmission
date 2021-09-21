@@ -156,6 +156,16 @@
       ext: 'png'
     }).addTo(map);
 
+    const origins = L.layerGroup().addTo(map);
+    const dests = L.layerGroup().addTo(map);
+
+    const overlays = {
+      "origins": origins,
+      "destinations": dests
+    };
+
+    L.control.layers(null, overlays).addTo(map);
+
     // use papaparse to parse the google doc
     Papa.parse('data/manuscript_transmission.csv', {
       // make sure it knows the first row is the header
@@ -195,8 +205,8 @@
           latlngs.push(latlng1, midpointLatLng, latlng2);
 
           var pathOptions = {
-            color: 'rgb(181,101,29,1.0)',
-            weight: 2
+            color: 'rgba(18, 97, 43, 0.75)',
+            weight: 4
           }
 
           if (typeof document.getElementById('map').animate === "function") {
@@ -205,9 +215,9 @@
           	// Scales the animation duration so that it's related to the line length
           	// (but such that the longest and shortest lines' durations are not too different).
              	// You may want to use a different scaling factor.
-            	pathOptions.animate = {
+            pathOptions.animate = {
           		duration: duration,
-          		iterations: Infinity,
+          		iterations: 1,
           		easing: 'ease-in-out',
           		direction: 'normal'
           	}
@@ -220,7 +230,22 @@
                  latlng2
             ], pathOptions).addTo(map);
 
+          // bind a popup to the curved paths
           curvedPath.bindPopup('From: ' + each.OriginPlace + '<br>To: ' + each.TargetPlace);
+          // on mouse hover, set a new style
+          curvedPath.on("mouseover", function(e) {
+            curvedPath.setStyle({
+              color: 'rgba(226,229,60,0.75)',
+              weight: 6
+            });
+          });
+          // on mouseout, reset the style
+          curvedPath.on("mouseout", function(e) {
+            curvedPath.setStyle({
+              color: 'rgba(18, 97, 43, 0.75)',
+              weight: 4
+            });
+          });
 
           // initiate a leaflet marker layer, feed it the data, and add to the map
           const originPts = L.marker([each.OriginLat, each.OriginLong], {
@@ -231,7 +256,7 @@
               shape: 'star',
               prefix: 'fas'
             })
-          }).addTo(map);
+          }).addTo(origins);
 
           originPts.bindPopup(
             '<h2>Shelfmark: ' + each.Shelfmark + '<br>' +
@@ -239,6 +264,10 @@
             'Period: ' + each.YearLow + "CE - " + each.YearHigh + "CE" + '<br>' +
             'Place: ' + each.OriginPlace + '</h2>'
           );
+
+          originPts.on('mouseover', function() {
+            this.openPopup();
+          });
 
           // initiate a leaflet marker layer, feed it the data, and add to the map
           const destinationPts = L.marker([each.DestinationLat, each.DestinationLong], {
@@ -249,7 +278,7 @@
               shape: 'star',
               prefix: 'fas'
             })
-          }).addTo(map);
+          }).addTo(dests);
 
           destinationPts.bindPopup(
             '<h2>Shelfmark: ' + each.Shelfmark + '<br>' +
@@ -257,6 +286,10 @@
             'Period: ' + each.YearLow + "CE - " + each.YearHigh + "CE" + '<br>' +
             'Place: ' + each.TargetPlace + '</h2>'
           );
+
+          destinationPts.on('mouseover', function() {
+            this.openPopup();
+          });
 
         });
 
